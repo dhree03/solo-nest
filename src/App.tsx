@@ -1,0 +1,878 @@
+import { useState } from 'react'
+import { TrendingUp, User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from 'recharts';
+
+const SoloNestApp = () => {
+  const [currentScreen, setCurrentScreen] = useState('splash');
+  const [userAnswers, setUserAnswers] = useState({});
+  const [totalMoney, setTotalMoney] = useState(2450.75);
+  const [uploadStep, setUploadStep] = useState('method');
+  const [newExpense, setNewExpense] = useState({
+    category: '',
+    amount: '',
+    description: ''
+  });
+  const [expenses, setExpenses] = useState([
+    { id: 1, category: 'child', amount: 150.00, description: 'School supplies', date: '2025-06-12' },
+    { id: 2, category: 'household', amount: 89.50, description: 'Groceries', date: '2025-06-11' },
+    { id: 3, category: 'child', amount: 45.00, description: 'Soccer registration', date: '2025-06-10' }
+  ]);
+  const [notifications] = useState([
+    { id: 1, message: 'Electricity bill due in 3 days', type: 'bill' },
+    { id: 2, message: 'You\'ve exceeded your entertainment budget', type: 'budget' }
+  ]);
+
+  // Goals state and functionality
+  const [showAddGoal, setShowAddGoal] = useState(false);
+  const [newGoal, setNewGoal] = useState({
+    name: '',
+    targetAmount: '',
+    targetDate: '',
+    category: 'General Savings',
+    forWho: 'Me'
+  });
+
+  // Sample financial data for goals
+  const [monthlyIncome] = useState(3000);
+  const [monthlySpending] = useState(2550);
+  const monthlyBalance = monthlyIncome - monthlySpending;
+  
+  const [goals, setGoals] = useState([
+    {
+      id: 1,
+      name: 'Emergency Fund',
+      category: 'Savings',
+      forWho: 'Myself (Savings)',
+      targetAmount: 5000,
+      savedAmount: 1500,
+      targetDate: '2025-12-31',
+      progress: 30
+    },
+    {
+      id: 2,
+      name: "Mia's Education",
+      category: 'Education',
+      forWho: 'My Child (Education)',
+      targetAmount: 20000,
+      savedAmount: 3000,
+      targetDate: '2035-08-01',
+      progress: 15
+    },
+    {
+      id: 3,
+      name: 'Family Vacation',
+      category: 'Leisure',
+      forWho: 'Both of Us (Leisure)',
+      targetAmount: 2500,
+      savedAmount: 800,
+      targetDate: '2026-06-30',
+      progress: 32
+    }
+  ]);
+
+  const questions = [
+    {
+      id: 1,
+      text: "How many children do you have?",
+      options: ["1", "2", "3", "4+"]
+    },
+    {
+      id: 2,
+      text: "What's your primary financial goal?",
+      options: ["Save for emergencies", "Plan for children's future", "Manage daily expenses", "Pay off debt"]
+    },
+    {
+      id: 3,
+      text: "How do you prefer to track expenses?",
+      options: ["Upload receipts", "Manual entry", "Bank sync", "Mix of all"]
+    },
+    {
+      id: 4,
+      text: "What's your biggest financial challenge?",
+      options: ["Unexpected child expenses", "Managing multiple bills", "Saving consistently", "Budget planning"]
+    }
+  ];
+
+  const [currentQuestion, setCurrentQuestion] = useState(0);
+
+  const handleAnswer = (answer: string) => {
+    setUserAnswers({...userAnswers, [currentQuestion]: answer});
+    if (currentQuestion < questions.length - 1) {
+      setCurrentQuestion(currentQuestion + 1);
+    } else {
+      setCurrentScreen('dashboard');
+    }
+  };
+
+  const addExpense = (category: string, amount: string, description: string) => {
+    const newExpense = {
+      id: Date.now(),
+      category,
+      amount: parseFloat(amount),
+      description,
+      date: new Date().toISOString().split('T')[0]
+    };
+    setExpenses([newExpense, ...expenses]);
+    setTotalMoney(totalMoney - parseFloat(amount));
+  };
+  
+
+  // Goals functions
+  const addGoal = () => {
+    if (newGoal.name && newGoal.targetAmount && newGoal.targetDate) {
+      const goal = {
+        id: Date.now(),
+        name: newGoal.name,
+        category: newGoal.category,
+        forWho: newGoal.forWho,
+        targetAmount: parseFloat(newGoal.targetAmount),
+        savedAmount: 0,
+        targetDate: newGoal.targetDate,
+        progress: 0
+      };
+      setGoals([...goals, goal]);
+      setNewGoal({ name: '', targetAmount: '', targetDate: '', category: 'General Savings', forWho: 'Me' });
+      setShowAddGoal(false);
+    }
+  };
+
+  const deleteGoal = (goalId: number) => {
+    setGoals(goals.filter(goal => goal.id !== goalId));
+  };
+
+  const addContribution = (goalId: number, amount: number) => {
+    setGoals(goals.map(goal => {
+      if (goal.id === goalId) {
+        const newSavedAmount = goal.savedAmount + amount;
+        const newProgress = Math.min((newSavedAmount / goal.targetAmount) * 100, 100);
+        return {
+          ...goal,
+          savedAmount: newSavedAmount,
+          progress: newProgress
+        };
+      }
+      return goal;
+    }));
+  };
+
+  const childExpenses = expenses.filter(exp => exp.category === 'child');
+  const totalChildExpenses = childExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalMonthlySpending = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+  // Analytics data for chart
+  const expensesByCategory = expenses.reduce<Record<string, number>>((acc, expense) => {
+    if (!acc[expense.category]) {
+      acc[expense.category] = 0;
+    }
+    acc[expense.category] += expense.amount;
+    return acc;
+  }, {});
+
+  const chartData = Object.entries(expensesByCategory).map(([category, amount]) => ({
+    category: category.charAt(0).toUpperCase() + category.slice(1),
+    amount: amount
+  }));
+
+  // Splash Screen
+  if (currentScreen === 'splash') {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
+        <div className="text-center">
+          <div className="mb-8">
+            <TrendingUp className="w-20 h-20 text-white mx-auto mb-4" />
+            <h1 className="text-4xl font-bold text-white mb-2">SoloNest</h1>
+            <p className="text-emerald-100 text-lg">Your Partner in Solo Parenting and Smart Saving</p>
+          </div>
+          <div className="space-y-4">
+            <button 
+              onClick={() => setCurrentScreen('auth')}
+              className="w-full bg-white text-emerald-600 py-4 px-8 rounded-full font-semibold text-lg shadow-lg"
+            >
+              Get Started
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Auth Screen
+  if (currentScreen === 'auth') {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
+        <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
+          <div className="text-center mb-8">
+            <TrendingUp className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <h1 className="text-3xl font-bold text-emerald-600 mb-2">SoloNest</h1>
+            <p className="text-gray-600">Your Partner in Solo Parenting and Smart Saving</p>
+          </div>
+          
+          <div className="space-y-4">
+            <button 
+              onClick={() => setCurrentScreen('questionnaire')}
+              className="w-full bg-emerald-600 text-white py-4 rounded-full font-semibold text-lg"
+            >
+              Log In
+            </button>
+            <button 
+              onClick={() => setCurrentScreen('questionnaire')}
+              className="w-full border-2 border-emerald-600 text-emerald-600 py-4 rounded-full font-semibold text-lg"
+            >
+              Sign Up
+            </button>
+            <button 
+              onClick={() => setCurrentScreen('questionnaire')}
+              className="w-full text-emerald-600 py-2 font-medium"
+            >
+              Continue as Guest
+            </button>
+            <div className="text-center space-y-2">
+              <p className="text-gray-500 text-sm">Forgot Password?</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Questionnaire Screen
+  if (currentScreen === 'questionnaire') {
+    return (
+      <div className="min-h-screen bg-gray-50 px-4 py-8">
+        <div className="max-w-md mx-auto">
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-2xl font-bold text-gray-800">Let's get to know you</h2>
+              <span className="text-emerald-600 font-medium">{currentQuestion + 1}/4</span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div 
+                className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${((currentQuestion + 1) / questions.length) * 100}%` }}
+              ></div>
+            </div>
+          </div>
+
+          <div className="bg-white p-6 rounded-xl shadow-lg">
+            <h3 className="text-xl font-semibold mb-6 text-gray-800">
+              {questions[currentQuestion].text}
+            </h3>
+            <div className="space-y-3">
+              {questions[currentQuestion].options.map((option, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleAnswer(option)}
+                  className="w-full p-4 text-left border-2 border-gray-200 rounded-xl hover:border-emerald-600 hover:bg-emerald-50 transition-all duration-200"
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Main App Navigation
+  const NavBar = () => (
+    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t">
+      <div className="flex justify-around py-2">
+        {[
+          { screen: 'dashboard', icon: Home, label: 'Home' },
+          { screen: 'child', icon: Baby, label: 'Child' },
+          { screen: 'goals', icon: Target, label: 'Goals' },
+          { screen: 'upload', icon: Upload, label: 'Upload' },
+          { screen: 'profile', icon: User, label: 'Profile' }
+        ].map(({ screen, icon: Icon, label }) => (
+          <button
+            key={screen}
+            onClick={() => setCurrentScreen(screen)}
+            className={`flex flex-col items-center py-2 px-4 ${
+              currentScreen === screen ? 'text-emerald-600' : 'text-gray-500'
+            }`}
+          >
+            <Icon className="w-6 h-6 mb-1" />
+            <span className="text-xs">{label}</span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
+  // Goals Screen
+  if (currentScreen === 'goals') {
+    if (showAddGoal) {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="bg-emerald-600 text-white p-6 rounded-b-3xl flex items-center">
+            <button onClick={() => setShowAddGoal(false)} className="mr-4">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-2xl font-bold">Set a New Financial Goal</h1>
+          </div>
+
+          <div className="p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 space-y-6">
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Goal Name:</label>
+                  <input
+                    type="text"
+                    value={newGoal.name}
+                    onChange={(e) => setNewGoal({...newGoal, name: e.target.value})}
+                    placeholder="e.g., Emergency Fund, Mia's Education"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Amount ($):</label>
+                  <input
+                    type="number"
+                    value={newGoal.targetAmount}
+                    onChange={(e) => setNewGoal({...newGoal, targetAmount: e.target.value})}
+                    placeholder="e.g., 5000"
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Date:</label>
+                  <input
+                    type="date"
+                    value={newGoal.targetDate}
+                    onChange={(e) => setNewGoal({...newGoal, targetDate: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Who is this goal for?</label>
+                  <select
+                    value={newGoal.forWho}
+                    onChange={(e) => setNewGoal({...newGoal, forWho: e.target.value})}
+                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="Me">Me</option>
+                    <option value="My Child">My Child</option>
+                    <option value="Both of Us">Both of Us</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category:</label>
+                <select
+                  value={newGoal.category}
+                  onChange={(e) => setNewGoal({...newGoal, category: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="General Savings">General Savings</option>
+                  <option value="Emergency Fund">Emergency Fund</option>
+                  <option value="Education">Education</option>
+                  <option value="Healthcare">Healthcare</option>
+                  <option value="Vacation">Vacation</option>
+                  <option value="Home">Home</option>
+                </select>
+              </div>
+
+              <button
+                onClick={addGoal}
+                disabled={!newGoal.name || !newGoal.targetAmount || !newGoal.targetDate}
+                className="w-full bg-emerald-600 text-white py-4 rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Add Goal
+              </button>
+            </div>
+          </div>
+          
+          <NavBar />
+        </div>
+      );
+    }
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Financial Goals</h1>
+            <button 
+              onClick={() => setShowAddGoal(true)}
+              className="bg-white/20 backdrop-blur-sm p-2 rounded-full"
+            >
+              <Plus className="w-6 h-6" />
+            </button>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Budget Snapshot */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Current Monthly Budget Snapshot</h3>
+            <div className="grid grid-cols-3 gap-4 mb-4">
+              <div>
+                <p className="text-sm text-gray-600">Income:</p>
+                <p className="text-lg font-bold text-emerald-600">${monthlyIncome.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Total Spending:</p>
+                <p className="text-lg font-bold text-red-500">${monthlySpending.toLocaleString()}</p>
+              </div>
+              <div>
+                <p className="text-sm text-gray-600">Balance:</p>
+                <p className="text-lg font-bold text-emerald-600">${monthlyBalance.toLocaleString()}</p>
+              </div>
+            </div>
+            <button className="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium">
+              Simulate Monthly Savings Contribution
+            </button>
+          </div>
+
+          {/* Goals List */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Your Financial Goals</h3>
+            <div className="space-y-4">
+              {goals.map(goal => (
+                <div key={goal.id} className="border border-gray-200 rounded-xl p-4">
+                  <div className="flex justify-between items-start mb-2">
+                    <div>
+                      <h4 className="font-semibold text-gray-800">{goal.name}</h4>
+                      <p className="text-sm text-gray-600">For: {goal.forWho}</p>
+                    </div>
+                    <div className="flex space-x-2">
+                      <button 
+                        onClick={() => addContribution(goal.id, 50)}
+                        className="text-emerald-600 text-sm bg-emerald-50 px-3 py-1 rounded-full font-medium"
+                      >
+                        Add $50
+                      </button>
+                      <button 
+                        onClick={() => deleteGoal(goal.id)}
+                        className="text-red-600 text-sm bg-red-50 px-3 py-1 rounded-full font-medium"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="mb-3">
+                    <div className="flex justify-between text-sm mb-1">
+                      <span>Target: ${goal.targetAmount.toLocaleString()}</span>
+                      <span>Saved: ${goal.savedAmount.toLocaleString()}</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-2">
+                      <div 
+                        className="bg-emerald-600 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${goal.progress}%` }}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  <div className="flex justify-between text-sm text-gray-600">
+                    <span>Progress: {goal.progress.toFixed(1)}%</span>
+                    <span>Remaining: ${(goal.targetAmount - goal.savedAmount).toLocaleString()}</span>
+                  </div>
+                  <div className="text-sm text-gray-600 mt-1">
+                    Target Date: {new Date(goal.targetDate).toLocaleDateString()}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          {/* Recommendations */}
+          <div className="bg-white rounded-xl shadow-sm p-6">
+            <h3 className="text-lg font-semibold text-gray-800 mb-4">Personalized Recommendations & Grants</h3>
+            <p className="text-gray-600 text-sm mb-4">Explore financial opportunities and government grants tailored to support your goals and stability.</p>
+            
+            <div className="space-y-4">
+              <div className="border-l-4 border-emerald-500 bg-emerald-50 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-emerald-800">OCBC 360 Account: Boost Your Savings!</h4>
+                <p className="text-sm text-emerald-700 mb-1">OCBC Bank</p>
+                <p className="text-sm text-gray-700 mb-2">Earn higher interest rates on your savings when you credit your salary, make bill payments, or grow your balance.</p>
+                <button className="text-emerald-600 text-sm font-medium">Learn More →</button>
+              </div>
+
+              <div className="border-l-4 border-blue-500 bg-blue-50 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-blue-800">CPF Education Scheme: Fund Your Child's Tertiary Education</h4>
+                <p className="text-sm text-blue-700 mb-1">CPF Board (Government Grant)</p>
+                <p className="text-sm text-gray-700 mb-2">Use your Ordinary Account savings to pay for your own or your children's approved local tertiary education fees.</p>
+                <button className="text-blue-600 text-sm font-medium">Learn More →</button>
+              </div>
+
+              <div className="border-l-4 border-purple-500 bg-purple-50 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-purple-800">UOB One Account: Smart Savings & Cashback</h4>
+                <p className="text-sm text-purple-700 mb-1">UOB Bank</p>
+                <p className="text-sm text-gray-700 mb-2">Unlock attractive interest rates and earn cashback on your daily spending with a comprehensive savings account.</p>
+                <button className="text-purple-600 text-sm font-medium">Learn More →</button>
+              </div>
+
+              <div className="border-l-4 border-orange-500 bg-orange-50 p-4 rounded-r-lg">
+                <h4 className="font-semibold text-orange-800">SkillsFuture Credit: Upskill for Your Future</h4>
+                <p className="text-sm text-orange-700 mb-1">SkillsFuture Singapore (Government Grant)</p>
+                <p className="text-sm text-gray-700 mb-2">Receive credits to offset course fees for a wide range of approved skills-based courses and career development programs.</p>
+                <button className="text-orange-600 text-sm font-medium">Learn More →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <NavBar />
+      </div>
+    );
+  }
+
+  // Dashboard Screen
+  if (currentScreen === 'dashboard') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+          <div className="flex justify-between items-center mb-6">
+            <h1 className="text-2xl font-bold">Welcome back!</h1>
+            <div className="relative">
+              <Bell className="w-6 h-6" />
+              {notifications.length > 0 && (
+                <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                  {notifications.length}
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-4">
+            <p className="text-emerald-100 text-sm mb-1">Total Balance</p>
+            <p className="text-3xl font-bold">${totalMoney.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="p-6 space-y-6">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+              <p className="text-gray-600 text-sm">Monthly Spending</p>
+              <p className="text-2xl font-bold text-gray-800">${totalMonthlySpending.toFixed(2)}</p>
+            </div>
+            <div className="bg-white p-4 rounded-xl shadow-sm">
+              <p className="text-gray-600 text-sm">Child Expenses</p>
+              <p className="text-2xl font-bold text-emerald-600">${totalChildExpenses.toFixed(2)}</p>
+            </div>
+          </div>
+
+          {notifications.length > 0 && (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Notifications</h3>
+              {notifications.map(notification => (
+                <div key={notification.id} className="flex items-center p-3 bg-yellow-50 rounded-lg mb-2">
+                  <Bell className="w-4 h-4 text-yellow-600 mr-3" />
+                  <p className="text-sm text-gray-700">{notification.message}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="font-semibold text-gray-800 mb-4">Expense Analytics</h3>
+            <p className="text-sm text-gray-500 mb-2">Track your spending by category</p>
+            <div className="h-64"> {/* Increased from h-48 to h-64 */}
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart 
+                  data={chartData} 
+                  margin={{ top: 30, right: 20, left: 0, bottom: 30 }} // Increased top margin
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
+                  <XAxis 
+                    dataKey="category" 
+                    tick={{ fontSize: 12 }}
+                    angle={-30}
+                    textAnchor="end"
+                    height={50}
+                    axisLine={false}
+                    tickLine={false}
+                  />
+                  <YAxis 
+                    tick={{ fontSize: 12 }} 
+                    axisLine={false}
+                    tickLine={false}
+                    tickFormatter={(value: number) => `$${value}`}
+                  />
+                  <Bar 
+                    dataKey="amount" 
+                    radius={[8, 8, 0, 0]}
+                    isAnimationActive={true}
+                    label={{ position: 'top', formatter: (v: number) => `$${v}` }}
+                    fill="#059669"
+                  >
+                    {
+                      chartData.map((_,index) => (
+                        <Cell key={`cell-${index}`} fill={
+                          ['#059669', '#2563eb', '#f59e42', '#a21caf', '#e11d48', '#fbbf24'][index % 6]
+                        } />
+                      ))
+                    }
+                  </Bar>
+                  <Tooltip 
+                    formatter={(value: number) => [`$${value}`, 'Amount']}
+                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 }}
+                    labelStyle={{ color: '#374151' }}
+                  />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
+            <p className="text-sm text-gray-500 mt-2 text-center">
+              Expenses by Category (${totalMonthlySpending.toFixed(2)} total)
+            </p>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="font-semibold text-gray-800 mb-3">Recent Transactions</h3>
+            {expenses.slice(0, 3).map(expense => (
+              <div key={expense.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+                <div>
+                  <p className="font-medium text-gray-800">{expense.description}</p>
+                  <p className="text-sm text-gray-500 capitalize">{expense.category} • {expense.date}</p>
+                </div>
+                <p className="font-semibold text-gray-800">-${expense.amount.toFixed(2)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <NavBar />
+      </div>
+    );
+  }
+
+  // Child Tab Screen
+  if (currentScreen === 'child') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+          <h1 className="text-2xl font-bold mb-4">Child Expenses</h1>
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+            <p className="text-emerald-100 text-sm mb-1">Total Child Spending</p>
+            <p className="text-3xl font-bold">${totalChildExpenses.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
+            <h3 className="font-semibold text-gray-800 mb-4">Categories</h3>
+            <div className="grid grid-cols-2 gap-3">
+              {[
+                { name: 'Education', amount: 120 },
+                { name: 'Healthcare', amount: 85 },
+                { name: 'Activities', amount: 65 },
+                { name: 'Clothing', amount: 45 }
+              ].map(category => (
+                <div key={category.name} className="bg-gray-50 p-3 rounded-lg">
+                  <p className="text-sm font-medium text-gray-700">{category.name}</p>
+                  <p className="text-lg font-bold text-emerald-600">${category.amount}</p>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="font-semibold text-gray-800 mb-3">Child-Related Transactions</h3>
+            {childExpenses.map(expense => (
+              <div key={expense.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+                <div>
+                  <p className="font-medium text-gray-800">{expense.description}</p>
+                  <p className="text-sm text-gray-500">{expense.date}</p>
+                </div>
+                <p className="font-semibold text-emerald-600">${expense.amount.toFixed(2)}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <NavBar />
+      </div>
+    );
+  }
+
+  // Upload Screen
+  if (currentScreen === 'upload') {
+    
+
+    if (uploadStep === 'method') {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+            <h1 className="text-2xl font-bold">Add Expense</h1>
+            <p className="text-emerald-100 mt-1">Choose how to add your expense</p>
+          </div>
+
+          <div className="p-6 space-y-4">
+            {[
+              { icon: Camera, title: 'Take Photo', desc: 'Scan receipt with camera' },
+              { icon: FileText, title: 'Upload Receipt', desc: 'Select from gallery' },
+              { icon: CreditCard, title: 'Bank Statement', desc: 'Import from bank' },
+              { icon: Plus, title: 'Manual Entry', desc: 'Enter details manually' }
+            ].map(({ icon: Icon, title, desc }) => (
+              <button
+                key={title}
+                onClick={() => setUploadStep('details')}
+                className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4 hover:shadow-md transition-shadow"
+              >
+                <div className="bg-emerald-100 p-3 rounded-full">
+                  <Icon className="w-6 h-6 text-emerald-600" />
+                </div>
+                <div className="text-left">
+                  <p className="font-semibold text-gray-800">{title}</p>
+                  <p className="text-sm text-gray-500">{desc}</p>
+                </div>
+              </button>
+            ))}
+          </div>
+          
+          <NavBar />
+        </div>
+      );
+    }
+
+    if (uploadStep === 'details') {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20">
+          <div className="bg-emerald-600 text-white p-6 rounded-b-3xl flex items-center">
+            <button onClick={() => setUploadStep('method')} className="mr-4">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-2xl font-bold">Expense Details</h1>
+          </div>
+
+          <div className="p-6">
+            <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select 
+                  value={newExpense.category}
+                  onChange={(e) => setNewExpense({...newExpense, category: e.target.value})}
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                >
+                  <option value="">Select category</option>
+                  <option value="child">Child</option>
+                  <option value="household">Household</option>
+                  <option value="personal">Personal</option>
+                  <option value="bills">Bills</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
+                <input
+                  type="number"
+                  step="0.01"
+                  value={newExpense.amount}
+                  onChange={(e) => setNewExpense({...newExpense, amount: e.target.value})}
+                  placeholder="0.00"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Description</label>
+                <input
+                  type="text"
+                  value={newExpense.description}
+                  onChange={(e) => setNewExpense({...newExpense, description: e.target.value})}
+                  placeholder="What was this for?"
+                  className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                />
+              </div>
+
+              <button
+                onClick={() => {
+                  if (newExpense.category && newExpense.amount && newExpense.description) {
+                    addExpense(newExpense.category, newExpense.amount, newExpense.description);
+                    setUploadStep('success');
+                  }
+                }}
+                disabled={!newExpense.category || !newExpense.amount || !newExpense.description}
+                className="w-full bg-emerald-600 text-white py-4 rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
+              >
+                Add Expense
+              </button>
+            </div>
+          </div>
+          
+          <NavBar />
+        </div>
+      );
+    }
+
+    if (uploadStep === 'success') {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20 flex items-center justify-center">
+          <div className="text-center p-6">
+            <div className="bg-emerald-100 w-20 h-20 rounded-full flex items-center justify-center mx-auto mb-4">
+              <Check className="w-10 h-10 text-emerald-600" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">Expense Added!</h2>
+            <p className="text-gray-600 mb-6">Your expense has been successfully recorded</p>
+            <button
+              onClick={() => {
+                setUploadStep('method');
+                setCurrentScreen('dashboard');
+              }}
+              className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold"
+            >
+              Back to Dashboard
+            </button>
+          </div>
+          <NavBar />
+        </div>
+      );
+    }
+  }
+
+  // Profile Screen
+  if (currentScreen === 'profile') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+          <h1 className="text-2xl font-bold">Profile</h1>
+        </div>
+
+        <div className="p-6">
+          <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
+            <div className="flex items-center mb-4">
+              <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mr-4">
+                <User className="w-8 h-8 text-emerald-600" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-gray-800">Sarah Johnson</h3>
+                <p className="text-gray-600">Parent of 2</p>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-4">
+            {[
+              { icon: Settings, title: 'Settings', desc: 'App preferences' },
+              { icon: Bell, title: 'Notifications', desc: 'Manage alerts' },
+              { icon: CreditCard, title: 'Link Bank Account', desc: 'Connect your bank' },
+              { icon: FileText, title: 'Privacy Policy', desc: 'Terms and conditions' }
+            ].map(({ icon: Icon, title, desc }) => (
+              <div key={title} className="bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4">
+                <div className="bg-gray-100 p-3 rounded-full">
+                  <Icon className="w-6 h-6 text-gray-600" />
+                </div>
+                <div className="flex-1">
+                  <p className="font-semibold text-gray-800">{title}</p>
+                  <p className="text-sm text-gray-500">{desc}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+        
+        <NavBar />
+      </div>
+    );
+  }
+
+  return null;
+};
+
+export default SoloNestApp;
