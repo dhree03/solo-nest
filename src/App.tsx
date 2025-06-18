@@ -1,7 +1,7 @@
 import { useState } from 'react'
-import { TrendingUp, User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
+import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
 import { ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
-
+import logo from './assets/Picture.png' 
 
 const SoloNestApp = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
@@ -226,7 +226,11 @@ const SoloNestApp = () => {
       <div className="min-h-screen bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
         <div className="text-center">
           <div className="mb-8">
-            <TrendingUp className="w-20 h-20 text-white mx-auto mb-4" />
+           <img 
+              src={logo}
+              alt="SoloNest Logo" 
+              className="w-40 h-40 mx-auto mb-4" // Adjust size as needed
+            />
             <h1 className="text-4xl font-bold text-white mb-2">SoloNest</h1>
             <p className="text-emerald-100 text-lg">Your Partner in Solo Parenting and Smart Saving</p>
           </div>
@@ -249,7 +253,11 @@ const SoloNestApp = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
           <div className="text-center mb-8">
-            <TrendingUp className="w-16 h-16 text-emerald-600 mx-auto mb-4" />
+            <img 
+              src={logo}
+              alt="SoloNest Logo"
+              className="w-40 h-40 mx-auto mb-4"
+            />
             <h1 className="text-3xl font-bold text-emerald-600 mb-2">SoloNest</h1>
             <p className="text-gray-600">Your Partner in Solo Parenting and Smart Saving</p>
           </div>
@@ -591,6 +599,22 @@ const SoloNestApp = () => {
             <p className="text-emerald-100 text-sm mb-1">Total Balance</p>
             <p className="text-3xl font-bold">${totalMoney.toFixed(2)}</p>
           </div>
+          {/* MODIFICATION START: Contextual "Next Steps" on Dashboard */}
+          {monthlyBalance > 0 && (
+            <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 mb-4 text-white">
+              <p className="text-lg font-semibold mb-3">Next Step:</p>
+              <p className="text-emerald-100 text-md mb-3">
+                You have ${monthlyBalance.toLocaleString()} left this month.
+              </p>
+              <button
+                onClick={() => setCurrentScreen('goals')}
+                className="w-full bg-white text-emerald-600 py-3 rounded-lg font-semibold"
+              >
+                Allocate to a Goal?
+              </button>
+            </div>
+          )}
+          {/* MODIFICATION END */}
         </div>
 
         <div className="p-6 space-y-6">
@@ -714,12 +738,22 @@ const SoloNestApp = () => {
               ))}
             </select>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-4">
             <p className="text-emerald-100 text-sm mb-1">
               {selectedChild === 'All' ? 'Total Child Spending' : `Spending for ${selectedChild}`}
             </p>
             <p className="text-3xl font-bold">${totalForSelected.toFixed(2)}</p>
           </div>
+          {/* MODIFICATION START: Contextual "Next Steps" on Child Tab */}
+          <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 text-white">
+            <button
+              onClick={() => alert("This feature allows you to log financial support from a co-parent. Coming soon!")}
+              className="w-full bg-white text-emerald-600 py-3 rounded-lg font-semibold"
+            >
+              Track Co-parent Contribution
+            </button>
+          </div>
+          {/* MODIFICATION END */}
         </div>
 
         <div className="p-6">
