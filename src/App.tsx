@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { TrendingUp, User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
+import { ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
 
 
 const SoloNestApp = () => {
@@ -633,7 +633,7 @@ const SoloNestApp = () => {
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {pieChartData.map((entry, index) => (
+                    {pieChartData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>
