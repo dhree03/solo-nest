@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TrendingUp, User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip } from 'recharts';
+import { BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
+
 
 const SoloNestApp = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
@@ -12,11 +13,18 @@ const SoloNestApp = () => {
     amount: '',
     description: ''
   });
+  // --- MODIFICATION START ---
+  // Added 'childName' to child-related expenses
   const [expenses, setExpenses] = useState([
-    { id: 1, category: 'child', amount: 150.00, description: 'School supplies', date: '2025-06-12' },
+    { id: 1, category: 'child', amount: 150.00, description: 'School supplies', date: '2025-06-12', childName: 'Mia' },
     { id: 2, category: 'household', amount: 89.50, description: 'Groceries', date: '2025-06-11' },
-    { id: 3, category: 'child', amount: 45.00, description: 'Soccer registration', date: '2025-06-10' }
+    { id: 3, category: 'child', amount: 45.00, description: 'Soccer registration', date: '2025-06-10', childName: 'Leo' },
+    { id: 4, category: 'bills', amount: 120.30, description: 'Electricity Bill', date: '2025-05-28' },
+    { id: 5, category: 'personal', amount: 35.00, description: 'Coffee with friend', date: '2025-05-25' },
+    { id: 6, category: 'child', amount: 75.00, description: 'Art class', date: '2025-05-20', childName: 'Mia' },
   ]);
+  // --- MODIFICATION END ---
+
   const [notifications] = useState([
     { id: 1, message: 'Electricity bill due in 3 days', type: 'bill' },
     { id: 2, message: 'You\'ve exceeded your entertainment budget', type: 'budget' }
@@ -31,6 +39,12 @@ const SoloNestApp = () => {
     category: 'General Savings',
     forWho: 'Me'
   });
+
+  // --- MODIFICATION START ---
+  // State to manage the selected child for filtering
+  const [selectedChild, setSelectedChild] = useState('All'); 
+  const children = ['Mia', 'Leo']; // Dummy data for children's names
+  // --- MODIFICATION END ---
 
   // Sample financial data for goals
   const [monthlyIncome] = useState(3000);
@@ -105,13 +119,19 @@ const SoloNestApp = () => {
   };
 
   const addExpense = (category: string, amount: string, description: string) => {
-    const newExpense = {
+    const newExpense: any = {
       id: Date.now(),
       category,
       amount: parseFloat(amount),
       description,
       date: new Date().toISOString().split('T')[0]
     };
+    // Note: In a real app, you'd have a UI to select the child when adding a child expense.
+    // For this prototype, we'll assign it to the first child.
+    if (category === 'child') {
+      newExpense.childName = children[0];
+    }
+
     setExpenses([newExpense, ...expenses]);
     setTotalMoney(totalMoney - parseFloat(amount));
   };
@@ -155,11 +175,13 @@ const SoloNestApp = () => {
     }));
   };
 
-  const childExpenses = expenses.filter(exp => exp.category === 'child');
-  const totalChildExpenses = childExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+  // This calculation remains for the dashboard, showing the total for ALL children
+  const totalChildExpenses = expenses
+    .filter(exp => exp.category === 'child')
+    .reduce((sum, exp) => sum + exp.amount, 0);
+
   const totalMonthlySpending = expenses.reduce((sum, exp) => sum + exp.amount, 0);
 
-  // Analytics data for chart
   const expensesByCategory = expenses.reduce<Record<string, number>>((acc, expense) => {
     if (!acc[expense.category]) {
       acc[expense.category] = 0;
@@ -167,11 +189,36 @@ const SoloNestApp = () => {
     acc[expense.category] += expense.amount;
     return acc;
   }, {});
-
-  const chartData = Object.entries(expensesByCategory).map(([category, amount]) => ({
-    category: category.charAt(0).toUpperCase() + category.slice(1),
-    amount: amount
+  
+  const pieChartData = Object.entries(expensesByCategory).map(([category, amount]) => ({
+    name: category.charAt(0).toUpperCase() + category.slice(1),
+    value: amount
   }));
+
+  const COLORS = ['#059669', '#2563eb', '#f59e42', '#a21caf', '#e11d48', '#fbbf24'];
+
+  const RADIAN = Math.PI / 180;
+  const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
+    const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
+    const x = cx + radius * Math.cos(-midAngle * RADIAN);
+    const y = cy + radius * Math.sin(-midAngle * RADIAN);
+
+    return (
+      <text x={x} y={y} fill="white" textAnchor={x > cx ? 'start' : 'end'} dominantBaseline="central">
+        {`${(percent * 100).toFixed(0)}%`}
+      </text>
+    );
+  };
+  
+  const monthlyTransactions = expenses.reduce<Record<string, typeof expenses>>((acc, expense) => {
+    const month = new Date(expense.date).toLocaleString('default', { month: 'long', year: 'numeric' });
+    if (!acc[month]) {
+      acc[month] = [];
+    }
+    acc[month].push(expense);
+    return acc;
+  }, {});
+
 
   // Splash Screen
   if (currentScreen === 'splash') {
@@ -549,7 +596,7 @@ const SoloNestApp = () => {
         <div className="p-6 space-y-6">
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-white p-4 rounded-xl shadow-sm">
-              <p className="text-gray-600 text-sm">Monthly Spending</p>
+              <p className="text-gray-600 text-sm">Total Spending</p>
               <p className="text-2xl font-bold text-gray-800">${totalMonthlySpending.toFixed(2)}</p>
             </div>
             <div className="bg-white p-4 rounded-xl shadow-sm">
@@ -571,57 +618,32 @@ const SoloNestApp = () => {
           )}
 
           <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-gray-800 mb-4">Expense Analytics</h3>
-            <p className="text-sm text-gray-500 mb-2">Track your spending by category</p>
-            <div className="h-64"> {/* Increased from h-48 to h-64 */}
+            <h3 className="font-semibold text-gray-800 mb-2">Expense Breakdown</h3>
+            <p className="text-sm text-gray-500 mb-4">Spending distribution by category</p>
+            <div className="h-80 w-full">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart 
-                  data={chartData} 
-                  margin={{ top: 30, right: 20, left: 0, bottom: 30 }} // Increased top margin
-                >
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f3f4f6" />
-                  <XAxis 
-                    dataKey="category" 
-                    tick={{ fontSize: 12 }}
-                    angle={-30}
-                    textAnchor="end"
-                    height={50}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis 
-                    tick={{ fontSize: 12 }} 
-                    axisLine={false}
-                    tickLine={false}
-                    tickFormatter={(value: number) => `$${value}`}
-                  />
-                  <Bar 
-                    dataKey="amount" 
-                    radius={[8, 8, 0, 0]}
-                    isAnimationActive={true}
-                    label={{ position: 'top', formatter: (v: number) => `$${v}` }}
-                    fill="#059669"
+                <PieChart>
+                  <Pie
+                    data={pieChartData}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    label={renderCustomizedLabel}
+                    outerRadius={100}
+                    fill="#8884d8"
+                    dataKey="value"
                   >
-                    {
-                      chartData.map((_,index) => (
-                        <Cell key={`cell-${index}`} fill={
-                          ['#059669', '#2563eb', '#f59e42', '#a21caf', '#e11d48', '#fbbf24'][index % 6]
-                        } />
-                      ))
-                    }
-                  </Bar>
-                  <Tooltip 
-                    formatter={(value: number) => [`$${value}`, 'Amount']}
-                    contentStyle={{ backgroundColor: '#fff', border: '1px solid #e5e7eb', borderRadius: 8, fontSize: 14 }}
-                    labelStyle={{ color: '#374151' }}
-                  />
-                </BarChart>
+                    {pieChartData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']} />
+                  <Legend iconSize={10} />
+                </PieChart>
               </ResponsiveContainer>
             </div>
-            <p className="text-sm text-gray-500 mt-2 text-center">
-              Expenses by Category (${totalMonthlySpending.toFixed(2)} total)
-            </p>
           </div>
+
 
           <div className="bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-gray-800 mb-3">Recent Transactions</h3>
@@ -635,54 +657,87 @@ const SoloNestApp = () => {
               </div>
             ))}
           </div>
-        </div>
-        
-        <NavBar />
-      </div>
-    );
-  }
-
-  // Child Tab Screen
-  if (currentScreen === 'child') {
-    return (
-      <div className="min-h-screen bg-gray-50 pb-20">
-        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
-          <h1 className="text-2xl font-bold mb-4">Child Expenses</h1>
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
-            <p className="text-emerald-100 text-sm mb-1">Total Child Spending</p>
-            <p className="text-3xl font-bold">${totalChildExpenses.toFixed(2)}</p>
-          </div>
-        </div>
-
-        <div className="p-6">
-          <div className="bg-white rounded-xl shadow-sm p-4 mb-6">
-            <h3 className="font-semibold text-gray-800 mb-4">Categories</h3>
-            <div className="grid grid-cols-2 gap-3">
-              {[
-                { name: 'Education', amount: 120 },
-                { name: 'Healthcare', amount: 85 },
-                { name: 'Activities', amount: 65 },
-                { name: 'Clothing', amount: 45 }
-              ].map(category => (
-                <div key={category.name} className="bg-gray-50 p-3 rounded-lg">
-                  <p className="text-sm font-medium text-gray-700">{category.name}</p>
-                  <p className="text-lg font-bold text-emerald-600">${category.amount}</p>
+          
+          <div className="bg-white rounded-xl shadow-sm p-4">
+            <h3 className="font-semibold text-gray-800 mb-3">Monthly Transactions</h3>
+            <div className="space-y-4">
+              {Object.entries(monthlyTransactions).map(([month, transactions]) => (
+                <div key={month}>
+                  <h4 className="font-medium text-gray-600 bg-gray-50 p-2 rounded-t-lg">{month}</h4>
+                  <div className="border border-gray-200 rounded-b-lg p-2">
+                    {transactions.map(expense => (
+                       <div key={expense.id} className="grid grid-cols-3 gap-2 items-center py-2 border-b border-gray-100 last:border-b-0">
+                        <div className="col-span-2">
+                           <p className="font-medium text-gray-800 text-sm">{expense.description}</p>
+                           <p className="text-xs text-gray-500 capitalize">{expense.category} {expense.childName ? `(${expense.childName})` : ''} • {expense.date}</p>
+                         </div>
+                         <p className="font-semibold text-gray-800 text-right text-sm">-${expense.amount.toFixed(2)}</p>
+                       </div>
+                    ))}
+                  </div>
                 </div>
               ))}
             </div>
           </div>
+        </div>
+        
+        <NavBar />
+      </div>
+    );
+  }
 
+  // --- MODIFICATION START ---
+  // Child Tab Screen updated with dropdown and filtering logic
+  if (currentScreen === 'child') {
+    const filteredExpenses = expenses.filter(expense => {
+      if (expense.category !== 'child') return false;
+      if (selectedChild === 'All') return true;
+      return expense.childName === selectedChild;
+    });
+
+    const totalForSelected = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
+
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
+          <div className="flex justify-between items-center mb-4">
+            <h1 className="text-2xl font-bold">Child Expenses</h1>
+            {/* Dropdown to select a child */}
+            <select
+              value={selectedChild}
+              onChange={(e) => setSelectedChild(e.target.value)}
+              className="bg-white/20 text-white rounded-lg p-2 text-sm font-medium focus:outline-none"
+            >
+              <option value="All">All Children</option>
+              {children.map(child => (
+                <option key={child} value={child}>{child}</option>
+              ))}
+            </select>
+          </div>
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
+            <p className="text-emerald-100 text-sm mb-1">
+              {selectedChild === 'All' ? 'Total Child Spending' : `Spending for ${selectedChild}`}
+            </p>
+            <p className="text-3xl font-bold">${totalForSelected.toFixed(2)}</p>
+          </div>
+        </div>
+
+        <div className="p-6">
           <div className="bg-white rounded-xl shadow-sm p-4">
-            <h3 className="font-semibold text-gray-800 mb-3">Child-Related Transactions</h3>
-            {childExpenses.map(expense => (
-              <div key={expense.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
-                <div>
-                  <p className="font-medium text-gray-800">{expense.description}</p>
-                  <p className="text-sm text-gray-500">{expense.date}</p>
+            <h3 className="font-semibold text-gray-800 mb-3">Transactions for {selectedChild === 'All' ? 'All Children' : selectedChild}</h3>
+            {filteredExpenses.length > 0 ? (
+              filteredExpenses.map(expense => (
+                <div key={expense.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
+                  <div>
+                    <p className="font-medium text-gray-800">{expense.description}</p>
+                    <p className="text-sm text-gray-500">{expense.childName} • {expense.date}</p>
+                  </div>
+                  <p className="font-semibold text-emerald-600">${expense.amount.toFixed(2)}</p>
                 </div>
-                <p className="font-semibold text-emerald-600">${expense.amount.toFixed(2)}</p>
-              </div>
-            ))}
+              ))
+            ) : (
+              <p className="text-gray-500 text-center py-4">No expenses recorded for {selectedChild}.</p>
+            )}
           </div>
         </div>
         
@@ -690,6 +745,7 @@ const SoloNestApp = () => {
       </div>
     );
   }
+  // --- MODIFICATION END ---
 
   // Upload Screen
   if (currentScreen === 'upload') {
