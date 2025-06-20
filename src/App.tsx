@@ -1,7 +1,8 @@
 import { useState } from 'react'
 import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
 import { ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
-import logo from './assets/Picture.png' 
+import logo from './assets/Picture.png'  // Assuming your logo is in the same directory
+
 
 const SoloNestApp = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
@@ -22,6 +23,8 @@ const SoloNestApp = () => {
     { id: 4, category: 'bills', amount: 120.30, description: 'Electricity Bill', date: '2025-05-28' },
     { id: 5, category: 'personal', amount: 35.00, description: 'Coffee with friend', date: '2025-05-25' },
     { id: 6, category: 'child', amount: 75.00, description: 'Art class', date: '2025-05-20', childName: 'Mia' },
+    { id: 7, category: 'child', amount: 200.00, description: 'New bicycle', date: '2025-06-01', childName: 'Leo' },
+    { id: 8, category: 'child', amount: 30.00, description: 'Music lessons', date: '2025-06-05', childName: 'Mia' },
   ]);
   // --- MODIFICATION END ---
 
@@ -198,6 +201,7 @@ const SoloNestApp = () => {
   const COLORS = ['#059669', '#2563eb', '#f59e42', '#a21caf', '#e11d48', '#fbbf24'];
 
   const RADIAN = Math.PI / 180;
+  // This function is for displaying labels on pie charts, now adaptable for percentages
   const renderCustomizedLabel = ({ cx, cy, midAngle, innerRadius, outerRadius, percent }: any) => {
     const radius = innerRadius + (outerRadius - innerRadius) * 0.5;
     const x = cx + radius * Math.cos(-midAngle * RADIAN);
@@ -226,8 +230,8 @@ const SoloNestApp = () => {
       <div className="min-h-screen bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
         <div className="text-center">
           <div className="mb-8">
-           <img 
-              src={logo}
+            <img 
+              src={logo} 
               alt="SoloNest Logo" 
               className="w-40 h-40 mx-auto mb-4" // Adjust size as needed
             />
@@ -253,10 +257,10 @@ const SoloNestApp = () => {
       <div className="min-h-screen bg-gray-50 flex items-center justify-center px-4">
         <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md">
           <div className="text-center mb-8">
-            <img 
+             <img 
               src={logo}
-              alt="SoloNest Logo"
-              className="w-40 h-40 mx-auto mb-4"
+              alt="SoloNest Logo" 
+              className="w-40 h-40 mx-auto mb-4" // Adjust size as needed
             />
             <h1 className="text-3xl font-bold text-emerald-600 mb-2">SoloNest</h1>
             <p className="text-gray-600">Your Partner in Solo Parenting and Smart Saving</p>
@@ -264,7 +268,7 @@ const SoloNestApp = () => {
           
           <div className="space-y-4">
             <button 
-              onClick={() => setCurrentScreen('questionnaire')}
+              onClick={() => setCurrentScreen('dashboard')}
               className="w-full bg-emerald-600 text-white py-4 rounded-full font-semibold text-lg"
             >
               Log In
@@ -586,12 +590,14 @@ const SoloNestApp = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Welcome back!</h1>
             <div className="relative">
-              <Bell className="w-6 h-6" />
-              {notifications.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
-                  {notifications.length}
-                </span>
-              )}
+              <button onClick={() => setCurrentScreen('notifications')}> {/* MODIFIED: Bell icon now navigates to notifications */}
+                <Bell className="w-6 h-6" />
+                {notifications.length > 0 && (
+                  <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                    {notifications.length}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
           
@@ -629,6 +635,8 @@ const SoloNestApp = () => {
             </div>
           </div>
 
+          {/* MODIFIED: Notifications removed from dashboard here */}
+          {/*
           {notifications.length > 0 && (
             <div className="bg-white rounded-xl shadow-sm p-4">
               <h3 className="font-semibold text-gray-800 mb-3">Notifications</h3>
@@ -640,6 +648,7 @@ const SoloNestApp = () => {
               ))}
             </div>
           )}
+          */}
 
           <div className="bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-gray-800 mb-2">Expense Breakdown</h3>
@@ -711,15 +720,57 @@ const SoloNestApp = () => {
   }
 
   // --- MODIFICATION START ---
-  // Child Tab Screen updated with dropdown and filtering logic
+  // Child Tab Screen updated with dropdown, filtering logic, and comparison analytics
   if (currentScreen === 'child') {
-    const filteredExpenses = expenses.filter(expense => {
+    const filterAndProcessExpenses = (childName: string | 'All') => {
+      const filtered = expenses.filter(expense => {
+        if (expense.category !== 'child') return false;
+        if (childName === 'All') return true;
+        return expense.childName === childName;
+      });
+
+      // Group expenses into desired categories
+      const categorizedExpenses = filtered.reduce<Record<string, number>>((acc, expense) => {
+        let categoryName = 'Others'; // Default category
+
+        if (expense.description.includes('School supplies') || expense.description.includes('Art class')) {
+          categoryName = 'School';
+        } else if (expense.description.includes('Soccer registration') || expense.description.includes('New bicycle')) {
+          categoryName = 'Sports';
+        } else if (expense.description.includes('Music lessons')) { // Explicitly categorize if not covered by School/Sports
+          categoryName = 'Others';
+        }
+        // Add more conditions here for other specific descriptions
+
+        if (!acc[categoryName]) {
+          acc[categoryName] = 0;
+        }
+        acc[categoryName] += expense.amount;
+        return acc;
+      }, {});
+
+      return Object.entries(categorizedExpenses).map(([name, value]) => ({
+        name,
+        value
+      }));
+    };
+
+    const miaExpensesData = filterAndProcessExpenses('Mia');
+    const leoExpensesData = filterAndProcessExpenses('Leo');
+
+    const totalForSelected = expenses
+        .filter(expense => {
+            if (expense.category !== 'child') return false;
+            if (selectedChild === 'All') return true;
+            return expense.childName === selectedChild;
+        })
+        .reduce((sum, exp) => sum + exp.amount, 0);
+
+    const filteredTransactionsForList = expenses.filter(expense => {
       if (expense.category !== 'child') return false;
       if (selectedChild === 'All') return true;
       return expense.childName === selectedChild;
     });
-
-    const totalForSelected = filteredExpenses.reduce((sum, exp) => sum + exp.amount, 0);
 
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
@@ -738,14 +789,13 @@ const SoloNestApp = () => {
               ))}
             </select>
           </div>
-          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4 mb-4">
+          <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-4">
             <p className="text-emerald-100 text-sm mb-1">
               {selectedChild === 'All' ? 'Total Child Spending' : `Spending for ${selectedChild}`}
             </p>
             <p className="text-3xl font-bold">${totalForSelected.toFixed(2)}</p>
           </div>
-          {/* MODIFICATION START: Contextual "Next Steps" on Child Tab */}
-          <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 text-white">
+          <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 text-white mt-4">
             <button
               onClick={() => alert("This feature allows you to log financial support from a co-parent. Coming soon!")}
               className="w-full bg-white text-emerald-600 py-3 rounded-lg font-semibold"
@@ -753,14 +803,86 @@ const SoloNestApp = () => {
               Track Co-parent Contribution
             </button>
           </div>
-          {/* MODIFICATION END */}
         </div>
 
-        <div className="p-6">
+        <div className="p-6 space-y-6">
+          {/* Comparison Analytics */}
+          {selectedChild === 'All' && (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Expense Comparison</h3>
+              <p className="text-sm text-gray-500 mb-4">Breakdown of spending for each child</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Mia's Pie Chart */}
+                <div>
+                  <h4 className="text-center font-medium text-gray-700 mb-2">Mia's Expenses</h4>
+                  {miaExpensesData.length > 0 ? (
+                    <div className="h-60 w-full"> {/* Reduced height for two charts */}
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={miaExpensesData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel}
+                            outerRadius={80} // Smaller outerRadius for two charts
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {miaExpensesData.map((_, index) => (
+                              <Cell key={`mia-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']} />
+                          <Legend iconSize={10} layout="vertical" align="right" verticalAlign="middle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No expenses for Mia yet.</p>
+                  )}
+                </div>
+
+                {/* Leo's Pie Chart */}
+                <div>
+                  <h4 className="text-center font-medium text-gray-700 mb-2">Leo's Expenses</h4>
+                  {leoExpensesData.length > 0 ? (
+                    <div className="h-60 w-full"> {/* Reduced height for two charts */}
+                      <ResponsiveContainer width="100%" height="100%">
+                        <PieChart>
+                          <Pie
+                            data={leoExpensesData}
+                            cx="50%"
+                            cy="50%"
+                            labelLine={false}
+                            label={renderCustomizedLabel} 
+                            outerRadius={80} // Smaller outerRadius for two charts
+                            fill="#8884d8"
+                            dataKey="value"
+                          >
+                            {leoExpensesData.map((_ ,index) => (
+                              <Cell key={`leo-cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                            ))}
+                          </Pie>
+                          <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']} />
+                          <Legend iconSize={10} layout="vertical" align="right" verticalAlign="middle" />
+                        </PieChart>
+                      </ResponsiveContainer>
+                    </div>
+                  ) : (
+                    <p className="text-gray-500 text-center py-4">No expenses for Leo yet.</p>
+                  )}
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Transactions List */}
           <div className="bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-gray-800 mb-3">Transactions for {selectedChild === 'All' ? 'All Children' : selectedChild}</h3>
-            {filteredExpenses.length > 0 ? (
-              filteredExpenses.map(expense => (
+            {filteredTransactionsForList.length > 0 ? (
+              filteredTransactionsForList.map(expense => (
                 <div key={expense.id} className="flex justify-between items-center py-3 border-b border-gray-100 last:border-b-0">
                   <div>
                     <p className="font-medium text-gray-800">{expense.description}</p>
@@ -795,14 +917,20 @@ const SoloNestApp = () => {
 
           <div className="p-6 space-y-4">
             {[
-              { icon: Camera, title: 'Take Photo', desc: 'Scan receipt with camera' },
-              { icon: FileText, title: 'Upload Receipt', desc: 'Select from gallery' },
-              { icon: CreditCard, title: 'Bank Statement', desc: 'Import from bank' },
-              { icon: Plus, title: 'Manual Entry', desc: 'Enter details manually' }
-            ].map(({ icon: Icon, title, desc }) => (
+              { id: 'takePhoto', icon: Camera, title: 'Take Photo', desc: 'Scan receipt with camera' },
+              { id: 'uploadReceipt', icon: FileText, title: 'Upload Receipt', desc: 'Select from gallery' },
+              { id: 'bankStatement', icon: CreditCard, title: 'Bank Statement', desc: 'Import from bank' },
+              { id: 'manualEntry', icon: Plus, title: 'Manual Entry', desc: 'Enter details manually' }
+            ].map(({ id, icon: Icon, title, desc }) => (
               <button
-                key={title}
-                onClick={() => setUploadStep('details')}
+                key={id}
+                onClick={() => {
+                  if (id === 'takePhoto') {
+                    setUploadStep('cameraScan'); // MODIFIED: For 'Take Photo', go to 'cameraScan' step
+                  } else {
+                    setUploadStep('details'); // Other methods still go to 'details'
+                  }
+                }}
                 className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4 hover:shadow-md transition-shadow"
               >
                 <div className="bg-emerald-100 p-3 rounded-full">
@@ -816,6 +944,32 @@ const SoloNestApp = () => {
             ))}
           </div>
           
+          <NavBar />
+        </div>
+      );
+    }
+
+    // NEW: Camera Scan Screen
+    if (uploadStep === 'cameraScan') {
+      return (
+        <div className="min-h-screen bg-gray-50 pb-20 flex flex-col items-center justify-center text-center">
+          <div className="bg-emerald-600 text-white p-6 rounded-b-3xl w-full flex items-center mb-8">
+            <button onClick={() => setUploadStep('method')} className="mr-4">
+              <ArrowLeft className="w-6 h-6" />
+            </button>
+            <h1 className="text-2xl font-bold">Scan Receipt</h1>
+          </div>
+          <div className="p-6">
+            <Camera className="w-24 h-24 text-emerald-500 mx-auto mb-6" />
+            <h2 className="text-xl font-semibold text-gray-800 mb-4">Use your camera to scan the receipt</h2>
+            <p className="text-gray-600 mb-8">Point your device camera at the receipt to automatically capture expense details.</p>
+            <button
+              onClick={() => setUploadStep('method')} // Or navigate to a 'processing' screen eventually
+              className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold"
+            >
+              Go Back
+            </button>
+          </div>
           <NavBar />
         </div>
       );
@@ -914,6 +1068,39 @@ const SoloNestApp = () => {
         </div>
       );
     }
+  }
+
+  // NEW: Notification Screen
+  if (currentScreen === 'notifications') {
+    return (
+      <div className="min-h-screen bg-gray-50 pb-20">
+        <div className="bg-emerald-600 text-white p-6 rounded-b-3xl flex items-center">
+          <button onClick={() => setCurrentScreen('dashboard')} className="mr-4">
+            <ArrowLeft className="w-6 h-6" />
+          </button>
+          <h1 className="text-2xl font-bold">Your Notifications</h1>
+        </div>
+
+        <div className="p-6">
+          {notifications.length > 0 ? (
+            <div className="bg-white rounded-xl shadow-sm p-4">
+              <h3 className="font-semibold text-gray-800 mb-3">Recent Alerts</h3>
+              {notifications.map(notification => (
+                <div key={notification.id} className="flex items-center p-3 bg-yellow-50 rounded-lg mb-2">
+                  <Bell className="w-4 h-4 text-yellow-600 mr-3" />
+                  <p className="text-sm text-gray-700">{notification.message}</p>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="bg-white rounded-xl shadow-sm p-6 text-center text-gray-500">
+              <p>No new notifications at the moment.</p>
+            </div>
+          )}
+        </div>
+        <NavBar />
+      </div>
+    );
   }
 
   // Profile Screen
