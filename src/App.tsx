@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target  } from 'lucide-react';
+import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target, MessageSquare } from 'lucide-react';
 import { ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
 import logo from './assets/Picture.png'  // Assuming your logo is in the same directory
 
@@ -9,13 +9,14 @@ const SoloNestApp = () => {
   const [userAnswers, setUserAnswers] = useState({});
   const [totalMoney, setTotalMoney] = useState(2256);
   const [uploadStep, setUploadStep] = useState('method');
+  // Added 'childName' to the new expense state
   const [newExpense, setNewExpense] = useState({
     category: '',
     amount: '',
-    description: ''
+    description: '',
+    childName: ''
   });
-  // --- MODIFICATION START ---
-  // Added 'childName' to child-related expenses
+  
   const [expenses, setExpenses] = useState([
     { id: 1, category: 'child', amount: 150.00, description: 'School supplies', date: '2025-06-12', childName: 'Mia' },
     { id: 2, category: 'household', amount: 89.50, description: 'Groceries', date: '2025-06-11' },
@@ -26,7 +27,6 @@ const SoloNestApp = () => {
     { id: 7, category: 'child', amount: 200.00, description: 'New bicycle', date: '2025-06-01', childName: 'Leo' },
     { id: 8, category: 'child', amount: 30.00, description: 'Music lessons', date: '2025-06-05', childName: 'Mia' },
   ]);
-  // --- MODIFICATION END ---
 
   const [notifications] = useState([
     { id: 1, message: 'Electricity bill due in 3 days', type: 'bill' },
@@ -42,17 +42,18 @@ const SoloNestApp = () => {
     category: 'General Savings',
     forWho: 'Me'
   });
+  
+  // State for chatbot popup
+  const [showChatbotPopup, setShowChatbotPopup] = useState(false);
 
-  // --- MODIFICATION START ---
   // State to manage the selected child for filtering
   const [selectedChild, setSelectedChild] = useState('All'); 
   const children = ['Mia', 'Leo']; // Dummy data for children's names
-  // --- MODIFICATION END ---
 
   // Sample financial data for goals
   const [monthlyIncome] = useState(3000);
-  const [monthlySpending] = useState(744);
-  const monthlyBalance = monthlyIncome - monthlySpending;
+  
+  // Removed static monthlySpending state. It will now be calculated dynamically.
   
   const [goals, setGoals] = useState([
     {
@@ -121,21 +122,25 @@ const SoloNestApp = () => {
     }
   };
 
-  const addExpense = (category: string, amount: string, description: string) => {
-    const newExpense: any = {
+  // Updated addExpense to handle the new expense object structure, including childName
+  const addExpense = (expenseData: { category: string; amount: string; description: string; childName?: string }) => {
+    const { category, amount, description, childName } = expenseData;
+    const newExpenseToAdd: any = {
       id: Date.now(),
       category,
       amount: parseFloat(amount),
       description,
       date: new Date().toISOString().split('T')[0]
     };
-    // Note: In a real app, you'd have a UI to select the child when adding a child expense.
-    // For this prototype, we'll assign it to the first child.
-    if (category === 'child') {
-      newExpense.childName = children[0];
+
+    if (category === 'child' && childName) {
+      newExpenseToAdd.childName = childName;
+    } else if (category === 'child') {
+        // Fallback if child name is not selected for some reason
+        newExpenseToAdd.childName = children[0] || 'Child';
     }
 
-    setExpenses([newExpense, ...expenses]);
+    setExpenses([newExpenseToAdd, ...expenses]);
     setTotalMoney(totalMoney - parseFloat(amount));
   };
   
@@ -183,7 +188,9 @@ const SoloNestApp = () => {
     .filter(exp => exp.category === 'child')
     .reduce((sum, exp) => sum + exp.amount, 0);
 
+  // This is the single source of truth for total spending, used by both Dashboard and Goals
   const totalMonthlySpending = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const monthlyBalance = monthlyIncome - totalMonthlySpending;
 
   const expensesByCategory = expenses.reduce<Record<string, number>>((acc, expense) => {
     if (!acc[expense.category]) {
@@ -230,11 +237,12 @@ const SoloNestApp = () => {
       <div className="min-h-screen bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center">
         <div className="text-center">
           <div className="mb-8">
-            <img 
-              src={logo} 
+           <img 
+              src={logo}
               alt="SoloNest Logo" 
               className="w-40 h-40 mx-auto mb-4" // Adjust size as needed
             />
+
             <h1 className="text-4xl font-bold text-white mb-2">SoloNest</h1>
             <p className="text-emerald-100 text-lg">Your Partner in Solo Parenting and Smart Saving</p>
           </div>
@@ -262,6 +270,7 @@ const SoloNestApp = () => {
               alt="SoloNest Logo" 
               className="w-40 h-40 mx-auto mb-4" // Adjust size as needed
             />
+
             <h1 className="text-3xl font-bold text-emerald-600 mb-2">SoloNest</h1>
             <p className="text-gray-600">Your Partner in Solo Parenting and Smart Saving</p>
           </div>
@@ -335,7 +344,7 @@ const SoloNestApp = () => {
 
   // Main App Navigation
   const NavBar = () => (
-    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t">
+    <div className="fixed bottom-0 left-0 right-0 bg-white shadow-lg border-t z-10">
       <div className="flex justify-around py-2">
         {[
           { screen: 'dashboard', icon: Home, label: 'Home' },
@@ -361,6 +370,10 @@ const SoloNestApp = () => {
 
   // Goals Screen
   if (currentScreen === 'goals') {
+    // Calculate spending and balance dynamically within the component that needs it.
+    const monthlySpending = totalMonthlySpending;
+    const currentMonthlyBalance = monthlyIncome - monthlySpending;
+
     if (showAddGoal) {
       return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -480,7 +493,7 @@ const SoloNestApp = () => {
               </div>
               <div>
                 <p className="text-sm text-gray-600">Balance:</p>
-                <p className="text-lg font-bold text-emerald-600">${monthlyBalance.toLocaleString()}</p>
+                <p className="text-lg font-bold text-emerald-600">${currentMonthlyBalance.toLocaleString()}</p>
               </div>
             </div>
             <button className="w-full bg-emerald-600 text-white py-3 rounded-lg font-medium">
@@ -559,20 +572,6 @@ const SoloNestApp = () => {
                 <p className="text-sm text-gray-700 mb-2">Use your Ordinary Account savings to pay for your own or your children's approved local tertiary education fees.</p>
                 <button className="text-blue-600 text-sm font-medium">Learn More →</button>
               </div>
-
-              <div className="border-l-4 border-purple-500 bg-purple-50 p-4 rounded-r-lg">
-                <h4 className="font-semibold text-purple-800">UOB One Account: Smart Savings & Cashback</h4>
-                <p className="text-sm text-purple-700 mb-1">UOB Bank</p>
-                <p className="text-sm text-gray-700 mb-2">Unlock attractive interest rates and earn cashback on your daily spending with a comprehensive savings account.</p>
-                <button className="text-purple-600 text-sm font-medium">Learn More →</button>
-              </div>
-
-              <div className="border-l-4 border-orange-500 bg-orange-50 p-4 rounded-r-lg">
-                <h4 className="font-semibold text-orange-800">SkillsFuture Credit: Upskill for Your Future</h4>
-                <p className="text-sm text-orange-700 mb-1">SkillsFuture Singapore (Government Grant)</p>
-                <p className="text-sm text-gray-700 mb-2">Receive credits to offset course fees for a wide range of approved skills-based courses and career development programs.</p>
-                <button className="text-orange-600 text-sm font-medium">Learn More →</button>
-              </div>
             </div>
           </div>
         </div>
@@ -590,7 +589,7 @@ const SoloNestApp = () => {
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-2xl font-bold">Welcome back!</h1>
             <div className="relative">
-              <button onClick={() => setCurrentScreen('notifications')}> {/* MODIFIED: Bell icon now navigates to notifications */}
+              <button onClick={() => setCurrentScreen('notifications')}>
                 <Bell className="w-6 h-6" />
                 {notifications.length > 0 && (
                   <span className="absolute -top-1 -right-1 bg-red-500 text-xs rounded-full w-5 h-5 flex items-center justify-center">
@@ -605,7 +604,6 @@ const SoloNestApp = () => {
             <p className="text-emerald-100 text-sm mb-1">Total Balance</p>
             <p className="text-3xl font-bold">${totalMoney.toFixed(2)}</p>
           </div>
-          {/* MODIFICATION START: Contextual "Next Steps" on Dashboard */}
           {monthlyBalance > 0 && (
             <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 mb-4 text-white">
               <p className="text-lg font-semibold mb-3">Next Step:</p>
@@ -620,7 +618,6 @@ const SoloNestApp = () => {
               </button>
             </div>
           )}
-          {/* MODIFICATION END */}
         </div>
 
         <div className="p-6 space-y-6">
@@ -634,21 +631,6 @@ const SoloNestApp = () => {
               <p className="text-2xl font-bold text-emerald-600">${totalChildExpenses.toFixed(2)}</p>
             </div>
           </div>
-
-          {/* MODIFIED: Notifications removed from dashboard here */}
-          {/*
-          {notifications.length > 0 && (
-            <div className="bg-white rounded-xl shadow-sm p-4">
-              <h3 className="font-semibold text-gray-800 mb-3">Notifications</h3>
-              {notifications.map(notification => (
-                <div key={notification.id} className="flex items-center p-3 bg-yellow-50 rounded-lg mb-2">
-                  <Bell className="w-4 h-4 text-yellow-600 mr-3" />
-                  <p className="text-sm text-gray-700">{notification.message}</p>
-                </div>
-              ))}
-            </div>
-          )}
-          */}
 
           <div className="bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-gray-800 mb-2">Expense Breakdown</h3>
@@ -714,13 +696,37 @@ const SoloNestApp = () => {
           </div>
         </div>
         
+        {/* Floating Chatbot Button */}
+        <button
+          onClick={() => setShowChatbotPopup(true)}
+          className="fixed bottom-24 right-6 bg-emerald-600 text-white p-4 rounded-full shadow-lg hover:bg-emerald-700 transition-colors z-20"
+          aria-label="Chat with AI Assistant"
+        >
+          <MessageSquare className="w-6 h-6" />
+        </button>
+
+        {/* Chatbot Popup Modal */}
+        {showChatbotPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-lg shadow-xl text-center w-11/12 max-w-sm">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Premium Feature</h3>
+                  <p className="text-gray-600 mb-6">Our AI Assistant is a premium feature. Coming soon!</p>
+                  <button
+                      onClick={() => setShowChatbotPopup(false)}
+                      className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold"
+                  >
+                      Close
+                  </button>
+              </div>
+          </div>
+        )}
+        
         <NavBar />
       </div>
     );
   }
 
-  // --- MODIFICATION START ---
-  // Child Tab Screen updated with dropdown, filtering logic, and comparison analytics
+  // Child Tab Screen
   if (currentScreen === 'child') {
     const filterAndProcessExpenses = (childName: string | 'All') => {
       const filtered = expenses.filter(expense => {
@@ -737,10 +743,9 @@ const SoloNestApp = () => {
           categoryName = 'School';
         } else if (expense.description.includes('Soccer registration') || expense.description.includes('New bicycle')) {
           categoryName = 'Sports';
-        } else if (expense.description.includes('Music lessons')) { // Explicitly categorize if not covered by School/Sports
+        } else if (expense.description.includes('Music lessons')) {
           categoryName = 'Others';
         }
-        // Add more conditions here for other specific descriptions
 
         if (!acc[categoryName]) {
           acc[categoryName] = 0;
@@ -777,7 +782,6 @@ const SoloNestApp = () => {
         <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
           <div className="flex justify-between items-center mb-4">
             <h1 className="text-2xl font-bold">Child Expenses</h1>
-            {/* Dropdown to select a child */}
             <select
               value={selectedChild}
               onChange={(e) => setSelectedChild(e.target.value)}
@@ -806,33 +810,20 @@ const SoloNestApp = () => {
         </div>
 
         <div className="p-6 space-y-6">
-          {/* Comparison Analytics */}
           {selectedChild === 'All' && (
             <div className="bg-white rounded-xl shadow-sm p-4">
               <h3 className="font-semibold text-gray-800 mb-3">Expense Comparison</h3>
               <p className="text-sm text-gray-500 mb-4">Breakdown of spending for each child</p>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Mia's Pie Chart */}
                 <div>
                   <h4 className="text-center font-medium text-gray-700 mb-2">Mia's Expenses</h4>
                   {miaExpensesData.length > 0 ? (
-                    <div className="h-60 w-full"> {/* Reduced height for two charts */}
+                    <div className="h-60 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie
-                            data={miaExpensesData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={renderCustomizedLabel}
-                            outerRadius={80} // Smaller outerRadius for two charts
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {miaExpensesData.map((_, index) => (
-                              <Cell key={`mia-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
+                          <Pie data={miaExpensesData} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={80} fill="#8884d8" dataKey="value" >
+                            {miaExpensesData.map((_, index) => ( <Cell key={`mia-cell-${index}`} fill={COLORS[index % COLORS.length]} /> ))}
                           </Pie>
                           <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']} />
                           <Legend iconSize={10} layout="vertical" align="right" verticalAlign="middle" />
@@ -844,26 +835,14 @@ const SoloNestApp = () => {
                   )}
                 </div>
 
-                {/* Leo's Pie Chart */}
                 <div>
                   <h4 className="text-center font-medium text-gray-700 mb-2">Leo's Expenses</h4>
                   {leoExpensesData.length > 0 ? (
-                    <div className="h-60 w-full"> {/* Reduced height for two charts */}
+                    <div className="h-60 w-full">
                       <ResponsiveContainer width="100%" height="100%">
                         <PieChart>
-                          <Pie
-                            data={leoExpensesData}
-                            cx="50%"
-                            cy="50%"
-                            labelLine={false}
-                            label={renderCustomizedLabel} 
-                            outerRadius={80} // Smaller outerRadius for two charts
-                            fill="#8884d8"
-                            dataKey="value"
-                          >
-                            {leoExpensesData.map((_ ,index) => (
-                              <Cell key={`leo-cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                            ))}
+                          <Pie data={leoExpensesData} cx="50%" cy="50%" labelLine={false} label={renderCustomizedLabel} outerRadius={80} fill="#8884d8" dataKey="value" >
+                            {leoExpensesData.map((_ ,index) => ( <Cell key={`leo-cell-${index}`} fill={COLORS[index % COLORS.length]} /> ))}
                           </Pie>
                           <Tooltip formatter={(value: number) => [`$${value.toFixed(2)}`, 'Amount']} />
                           <Legend iconSize={10} layout="vertical" align="right" verticalAlign="middle" />
@@ -878,7 +857,6 @@ const SoloNestApp = () => {
             </div>
           )}
 
-          {/* Transactions List */}
           <div className="bg-white rounded-xl shadow-sm p-4">
             <h3 className="font-semibold text-gray-800 mb-3">Transactions for {selectedChild === 'All' ? 'All Children' : selectedChild}</h3>
             {filteredTransactionsForList.length > 0 ? (
@@ -901,12 +879,10 @@ const SoloNestApp = () => {
       </div>
     );
   }
-  // --- MODIFICATION END ---
 
   // Upload Screen
   if (currentScreen === 'upload') {
     
-
     if (uploadStep === 'method') {
       return (
         <div className="min-h-screen bg-gray-50 pb-20">
@@ -925,10 +901,14 @@ const SoloNestApp = () => {
               <button
                 key={id}
                 onClick={() => {
+                  setNewExpense({ category: '', amount: '', description: '', childName: '' }); // Reset form
                   if (id === 'takePhoto') {
-                    setUploadStep('cameraScan'); // MODIFIED: For 'Take Photo', go to 'cameraScan' step
+                    setUploadStep('cameraScan');
+                  } else if (id === 'manualEntry') {
+                    setUploadStep('details');
                   } else {
-                    setUploadStep('details'); // Other methods still go to 'details'
+                    // Placeholder for other methods
+                    setUploadStep('details');
                   }
                 }}
                 className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4 hover:shadow-md transition-shadow"
@@ -949,7 +929,6 @@ const SoloNestApp = () => {
       );
     }
 
-    // NEW: Camera Scan Screen
     if (uploadStep === 'cameraScan') {
       return (
         <div className="min-h-screen bg-gray-50 pb-20 flex flex-col items-center justify-center text-center">
@@ -964,7 +943,7 @@ const SoloNestApp = () => {
             <h2 className="text-xl font-semibold text-gray-800 mb-4">Use your camera to scan the receipt</h2>
             <p className="text-gray-600 mb-8">Point your device camera at the receipt to automatically capture expense details.</p>
             <button
-              onClick={() => setUploadStep('method')} // Or navigate to a 'processing' screen eventually
+              onClick={() => setUploadStep('method')}
               className="bg-emerald-600 text-white px-8 py-3 rounded-lg font-semibold"
             >
               Go Back
@@ -1002,6 +981,23 @@ const SoloNestApp = () => {
                 </select>
               </div>
 
+              {/* Conditional dropdown for child name */}
+              {newExpense.category === 'child' && (
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">For which child?</label>
+                    <select
+                      value={newExpense.childName}
+                      onChange={(e) => setNewExpense({ ...newExpense, childName: e.target.value })}
+                      className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                    >
+                      <option value="">Select child</option>
+                      {children.map(child => (
+                        <option key={child} value={child}>{child}</option>
+                      ))}
+                    </select>
+                  </div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">Amount</label>
                 <input
@@ -1027,12 +1023,14 @@ const SoloNestApp = () => {
 
               <button
                 onClick={() => {
-                  if (newExpense.category && newExpense.amount && newExpense.description) {
-                    addExpense(newExpense.category, newExpense.amount, newExpense.description);
-                    setUploadStep('success');
-                  }
+                    // Validation check
+                    if (newExpense.category && newExpense.amount && newExpense.description && (newExpense.category !== 'child' || newExpense.childName)) {
+                        addExpense(newExpense);
+                        setUploadStep('success');
+                    }
                 }}
-                disabled={!newExpense.category || !newExpense.amount || !newExpense.description}
+                // Updated disabled logic
+                disabled={!newExpense.category || !newExpense.amount || !newExpense.description || (newExpense.category === 'child' && !newExpense.childName) }
                 className="w-full bg-emerald-600 text-white py-4 rounded-lg font-semibold disabled:bg-gray-300 disabled:cursor-not-allowed"
               >
                 Add Expense
@@ -1070,7 +1068,7 @@ const SoloNestApp = () => {
     }
   }
 
-  // NEW: Notification Screen
+  // Notification Screen
   if (currentScreen === 'notifications') {
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
