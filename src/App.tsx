@@ -7,7 +7,7 @@ import logo from './assets/Picture.png'  // Assuming your logo is in the same di
 const SoloNestApp = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
   const [userAnswers, setUserAnswers] = useState({});
-  const [totalMoney, setTotalMoney] = useState(2450.75);
+  const [totalMoney, setTotalMoney] = useState(2256);
   const [uploadStep, setUploadStep] = useState('method');
   const [newExpense, setNewExpense] = useState({
     category: '',
@@ -51,7 +51,7 @@ const SoloNestApp = () => {
 
   // Sample financial data for goals
   const [monthlyIncome] = useState(3000);
-  const [monthlySpending] = useState(2550);
+  const [monthlySpending] = useState(744);
   const monthlyBalance = monthlyIncome - monthlySpending;
   
   const [goals, setGoals] = useState([
