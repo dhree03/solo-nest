@@ -110,8 +110,7 @@ const SoloNestApp = () => {
 
     // --- NEW: State for Profile Picture ---
     // You can replace this URL with an actual image URL
-    const [profilePicture, setProfilePicture] = useState('https://placehold.co/100x100/a7f3d0/059669?text=User');
-
+   
 
   const questions = [
     {
