@@ -1,8 +1,9 @@
 import { useState } from 'react'
-import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target, MessageSquare } from 'lucide-react';
+// Added Edit icon for the profile photo
+import { User, Upload, Baby, Home, Bell, Settings, Camera, FileText, CreditCard, Plus, ArrowLeft, Check, Target, MessageSquare, Users, Calendar, Edit } from 'lucide-react';
 import { ResponsiveContainer, Cell, Tooltip, PieChart, Pie, Legend } from 'recharts';
 import logo from './assets/Picture.png'  // Assuming your logo is in the same directory
-
+import profilepicture from './assets/profilepicture.png' // Assuming you have a profile picture asset
 
 const SoloNestApp = () => {
   const [currentScreen, setCurrentScreen] = useState('splash');
@@ -46,6 +47,9 @@ const SoloNestApp = () => {
   // State for chatbot popup
   const [showChatbotPopup, setShowChatbotPopup] = useState(false);
 
+  // --- NEW: State for Co-parent Contribution popup ---
+  const [showCoparentPopup, setShowCoparentPopup] = useState(false);
+
   // State to manage the selected child for filtering
   const [selectedChild, setSelectedChild] = useState('All'); 
   const children = ['Mia', 'Leo']; // Dummy data for children's names
@@ -87,6 +91,27 @@ const SoloNestApp = () => {
       progress: 32
     }
   ]);
+  
+    // State for Profile Screen
+    const [profileView, setProfileView] = useState('main'); // 'main', 'kids', 'bills'
+
+    // State for Kid's Profiles
+    const [kids, setKids] = useState([
+      { name: 'Mia', age: 8, education: 'Primary 2' },
+      { name: 'Leo', age: 6, education: 'K2' }
+    ]);
+  
+    // State for Bill Management
+    const [bills, setBills] = useState([
+        { id: 1, name: 'Electricity', dueDate: '2025-07-15' },
+        { id: 2, name: 'Water', dueDate: '' },
+        { id: 3, name: 'Internet', dueDate: '2025-07-20' },
+    ]);
+
+    // --- NEW: State for Profile Picture ---
+    // You can replace this URL with an actual image URL
+    const [profilePicture, setProfilePicture] = useState('https://placehold.co/100x100/a7f3d0/059669?text=User');
+
 
   const questions = [
     {
@@ -230,6 +255,18 @@ const SoloNestApp = () => {
     return acc;
   }, {});
 
+    // Handler for updating kid's profile
+    const handleKidUpdate = (index: number, field: 'age' | 'education', value: string | number) => {
+        const updatedKids = [...kids];
+        updatedKids[index] = { ...updatedKids[index], [field]: value };
+        setKids(updatedKids);
+    };
+
+    // Handler for updating bill due dates
+    const handleBillUpdate = (id: number, dueDate: string) => {
+        setBills(bills.map(bill => (bill.id === id ? { ...bill, dueDate } : bill)));
+    };
+
 
   // Splash Screen
   if (currentScreen === 'splash') {
@@ -355,7 +392,10 @@ const SoloNestApp = () => {
         ].map(({ screen, icon: Icon, label }) => (
           <button
             key={screen}
-            onClick={() => setCurrentScreen(screen)}
+            onClick={() => {
+              setCurrentScreen(screen);
+              setProfileView('main'); // Reset profile view when changing tabs
+            }}
             className={`flex flex-col items-center py-2 px-4 ${
               currentScreen === screen ? 'text-emerald-600' : 'text-gray-500'
             }`}
@@ -800,8 +840,9 @@ const SoloNestApp = () => {
             <p className="text-3xl font-bold">${totalForSelected.toFixed(2)}</p>
           </div>
           <div className="bg-emerald-500/80 backdrop-blur-sm rounded-2xl p-4 text-white mt-4">
+             {/* --- MODIFIED: Co-parent contribution button now opens a popup --- */}
             <button
-              onClick={() => alert("This feature allows you to log financial support from a co-parent. Coming soon!")}
+              onClick={() => setShowCoparentPopup(true)}
               className="w-full bg-white text-emerald-600 py-3 rounded-lg font-semibold"
             >
               Track Co-parent Contribution
@@ -875,6 +916,21 @@ const SoloNestApp = () => {
           </div>
         </div>
         
+        {/* --- NEW: Co-parent Popup Modal --- */}
+        {showCoparentPopup && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white p-8 rounded-lg shadow-xl text-center w-11/12 max-w-sm">
+                  <h3 className="text-xl font-bold text-gray-800 mb-2">Premium Feature</h3>
+                  <p className="text-gray-600 mb-6">"Track Co-parent Contribution" is available for premium version users.</p>
+                  <button
+                      onClick={() => setShowCoparentPopup(false)}
+                      className="bg-emerald-600 text-white px-6 py-2 rounded-lg font-semibold"
+                  >
+                      Close
+                  </button>
+              </div>
+          </div>
+        )}
         <NavBar />
       </div>
     );
@@ -1101,8 +1157,81 @@ const SoloNestApp = () => {
     );
   }
 
-  // Profile Screen
+  // Profile Screen with multiple views
   if (currentScreen === 'profile') {
+    // Sub-view for Kid Profiles
+    if (profileView === 'kids') {
+        return (
+            <div className="min-h-screen bg-gray-50 pb-20">
+                <div className="bg-emerald-600 text-white p-6 rounded-b-3xl flex items-center">
+                    <button onClick={() => setProfileView('main')} className="mr-4">
+                        <ArrowLeft className="w-6 h-6" />
+                    </button>
+                    <h1 className="text-2xl font-bold">Kid Profiles</h1>
+                </div>
+                <div className="p-6 space-y-4">
+                    {kids.map((kid, index) => (
+                        <div key={index} className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+                            <h3 className="text-lg font-semibold text-gray-800">{kid.name}'s Profile</h3>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Age</label>
+                                <input
+                                    type="number"
+                                    value={kid.age}
+                                    onChange={(e) => handleKidUpdate(index, 'age', parseInt(e.target.value))}
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">Education Level</label>
+                                <input
+                                    type="text"
+                                    value={kid.education}
+                                    onChange={(e) => handleKidUpdate(index, 'education', e.target.value)}
+                                    placeholder="e.g., Primary 2"
+                                    className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                        </div>
+                    ))}
+                </div>
+                <NavBar />
+            </div>
+        );
+    }
+    
+    // Sub-view for Bill Management
+    if (profileView === 'bills') {
+        return (
+            <div className="min-h-screen bg-gray-50 pb-20">
+                <div className="bg-emerald-600 text-white p-6 rounded-b-3xl flex items-center">
+                    <button onClick={() => setProfileView('main')} className="mr-4">
+                        <ArrowLeft className="w-6 h-6" />
+                    </button>
+                    <h1 className="text-2xl font-bold">Bill Management</h1>
+                </div>
+                <div className="p-6 space-y-4">
+                    <div className="bg-white rounded-xl shadow-sm p-6 space-y-4">
+                        <h3 className="text-lg font-semibold text-gray-800">Set Bill Due Dates</h3>
+                        {bills.map((bill) => (
+                            <div key={bill.id} className="flex items-center justify-between">
+                                <label className="text-gray-700">{bill.name}</label>
+                                <input
+                                    type="date"
+                                    value={bill.dueDate}
+                                    onChange={(e) => handleBillUpdate(bill.id, e.target.value)}
+                                    className="p-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                                />
+                            </div>
+                        ))}
+                    </div>
+                </div>
+                <NavBar />
+            </div>
+        );
+    }
+
+    // Main Profile View
     return (
       <div className="min-h-screen bg-gray-50 pb-20">
         <div className="bg-emerald-600 text-white p-6 rounded-b-3xl">
@@ -1112,24 +1241,37 @@ const SoloNestApp = () => {
         <div className="p-6">
           <div className="bg-white rounded-xl shadow-sm p-6 mb-6">
             <div className="flex items-center mb-4">
-              <div className="bg-emerald-100 w-16 h-16 rounded-full flex items-center justify-center mr-4">
-                <User className="w-8 h-8 text-emerald-600" />
+              {/* --- MODIFIED: Profile Picture with Edit button --- */}
+              <div className="relative mr-4">
+                  <img src={profilepicture} alt="Profile" className="w-16 h-16 rounded-full object-cover" />
+                  <button 
+                      onClick={() => alert('File upload functionality can be added here!')}
+                      className="absolute bottom-0 right-0 bg-emerald-600 text-white p-1 rounded-full border-2 border-white"
+                  >
+                      <Edit className="w-3 h-3" />
+                  </button>
               </div>
               <div>
-                <h3 className="text-xl font-bold text-gray-800">Sarah Johnson</h3>
-                <p className="text-gray-600">Parent of 2</p>
+                <h3 className="text-xl font-bold text-gray-800">Priscilla Tan</h3>
+                <p className="text-gray-600">Parent of {kids.length}</p>
               </div>
             </div>
           </div>
 
           <div className="space-y-4">
             {[
-              { icon: Settings, title: 'Settings', desc: 'App preferences' },
-              { icon: Bell, title: 'Notifications', desc: 'Manage alerts' },
-              { icon: CreditCard, title: 'Link Bank Account', desc: 'Connect your bank' },
-              { icon: FileText, title: 'Privacy Policy', desc: 'Terms and conditions' }
-            ].map(({ icon: Icon, title, desc }) => (
-              <div key={title} className="bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4">
+              { view: 'kids', icon: Users, title: 'Kid Profiles', desc: 'Manage your children\'s info' },
+              { view: 'bills', icon: Calendar, title: 'Bill Management', desc: 'Track upcoming bill due dates' },
+              { view: 'settings', icon: Settings, title: 'Settings', desc: 'App preferences' },
+              { view: 'notifications', icon: Bell, title: 'Notifications', desc: 'Manage alerts' },
+              { view: 'bank', icon: CreditCard, title: 'Link Bank Account', desc: 'Connect your bank' },
+              { view: 'privacy', icon: FileText, title: 'Privacy Policy', desc: 'Terms and conditions' }
+            ].map(({ view, icon: Icon, title, desc }) => (
+              <button 
+                key={title} 
+                onClick={() => setProfileView(view)}
+                className="w-full bg-white p-4 rounded-xl shadow-sm flex items-center space-x-4 text-left"
+              >
                 <div className="bg-gray-100 p-3 rounded-full">
                   <Icon className="w-6 h-6 text-gray-600" />
                 </div>
@@ -1137,7 +1279,7 @@ const SoloNestApp = () => {
                   <p className="font-semibold text-gray-800">{title}</p>
                   <p className="text-sm text-gray-500">{desc}</p>
                 </div>
-              </div>
+              </button>
             ))}
           </div>
         </div>
